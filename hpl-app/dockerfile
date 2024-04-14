@@ -1,0 +1,8 @@
+FROM debian:sid
+
+WORKDIR /
+
+RUN apt-get update && apt-get install -y wget gcc openmpi-bin openmpi-common libopenmpi-dev libatlas-base-dev 
+COPY . .
+
+CMD  ["./mpirun",  "--allow-run-as-root","-np", "1", "xhpl"]
