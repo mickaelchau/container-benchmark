@@ -58,7 +58,7 @@ function get_command_time_and_monitor_resources() {
 
   local monitoring_pid=$!
   start=$(date +%s%N)
-  "$command" $concurrency >/dev/null
+  "$command" "$concurrency" >/dev/null
   end=$(date +%s%N)
   total=$((end - start))
 
@@ -120,17 +120,17 @@ max_runs=2
 export image_name="hpl"
 
 for concurrency in 1 2 4 8; do
-  count=0
-  while [[ $count -lt $max_runs ]]; do
+  count=1
+  while [[ $count -le $max_runs ]]; do
    
-    load_time=$(get_command_time_and_monitor_resources "load_command" "$count" 0)
-    instantiate_time=$(get_command_time_and_monitor_resources "start_command" "$count" $concurrency)
+    load_time=$(get_command_time_and_monitor_resources "load_command" "$concurrency" "$count")
+    instantiate_time=$(get_command_time_and_monitor_resources "start_command" "$concurrency" "$count")
     sudo docker container ls
     #start_command 5 
     #sleep 30
-    stop_time=$(get_command_time_and_monitor_resources "stop_command" "$count" $concurrency)
-    container_removal_time=$(get_command_time_and_monitor_resources "remove_container_command" "$count" $concurrency)
-    image_removal_time=$(get_command_time_and_monitor_resources "remove_image_command" "$count" 0)
+    stop_time=$(get_command_time_and_monitor_resources "stop_command" "$concurrency" "$count")
+    container_removal_time=$(get_command_time_and_monitor_resources "remove_container_command" "$concurrency" "$count")
+    image_removal_time=$(get_command_time_and_monitor_resources "remove_image_command" "$concurrency" "$count")
     #sleep 60
     display_date=$(get_date_time)
 
