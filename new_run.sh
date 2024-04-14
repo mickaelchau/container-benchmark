@@ -1,79 +1,76 @@
-# Function to get the time execution of a function and monitor system resources
-function get_command_time_and_monitor_resources() {
-  local start end total command iteration uid
-  command="$1"
-  iteration="$2"
-  uid=$(date +%Y%m%d%H%M%S%N)  # Unique identifier based on timestamp
-
-  # Start resource monitoring in the background with unique identifier
-  start_resource_monitoring "$command" "$iteration" "$uid" &
-
-  local monitoring_pid=$!
-  start=$(date +%s%N)
-  "$command" >/dev/null
-  end=$(date +%s%N)
-  total=$((end - start))
-
-  # Stop the resource monitoring
-  kill $monitoring_pid
-
-  echo $total
+# Function to generate a unique container name
+function generate_container_name() {
+  local base_name="$1"
+  local uid="$2"
+  echo "${base_name}_${uid}"
 }
 
-# Function to start resource monitoring
-function start_resource_monitoring() {
-  local command="$1"
-  local iteration="$2"
-  local uid="$3"
-  local date_time interval=1  # interval in seconds for monitoring
+function start_command() {
+  local uid="$1"
+  local container_name=$(generate_container_name "hpl" "$uid")
+  docker run -d --name "$container_name" "$image_name" || exit 1 &
+  echo $!  # Return PID for background process
+}
 
-  while true; do
-    date_time=$(date +%Y-%m-%d_%H-%M-%S)
+function stop_command() {
+  local uid="$1"
+  local container_name=$(generate_container_name "hpl" "$uid")
+  docker container stop "$container_name" || exit 1 &
+  echo $!
+}
 
-    # Log CPU, Disk, and Memory usage
-    local log_entry="$uid;$iteration;$command;$date_time"
-    log_cpu_usage "$log_entry"
-    log_disk_usage "$log_entry"
-    log_memory_usage "$log_entry"
+function remove_container_command() {
+  local uid="$1"
+  local container_name=$(generate_container_name "hpl" "$uid")
+  docker rm "$container_name" || exit 1 &
+  echo $!
+}
 
-    sleep $interval
+# Configure the number of concurrent experiments
+concurrency_level=3  # Number of experiments to run in parallel
+
+# Repeated testing configuration
+max_runs=5  # Number of times to repeat the whole set of experiments
+
+# Main loop for repeated testing
+for (( run=1; run<=max_runs; run++ )); do
+  echo "Starting run $run of $max_runs"
+
+  # Array to keep track of PIDs for concurrency
+  declare -a pids
+
+  # Start experiments concurrently
+  for (( i=1; i<=concurrency_level; i++ )); do
+    uid=$(date +%Y%m%d%H%M%S%N)  # Generate a unique identifier
+    echo "Starting experiment $i in run $run"
+    start_pid=$(start_command "$uid")
+    pids+=($start_pid)  # Store PID for later synchronization
   done
-}
 
-function log_cpu_usage() {
-  local log_entry="$1"
-  local cpu=$(mpstat 1 1 | grep Average)
-  local usr=$(echo $cpu | awk '{print $3}')
-  local nice=$(echo $cpu | awk '{print $4}')
-  local sys=$(echo $cpu | awk '{print $5}')
-  local iowait=$(echo $cpu | awk '{print $6}')
-  local soft=$(echo $cpu | awk '{print $8}')
-  echo "$log_entry;cpu;$usr;$nice;$sys;$iowait;$soft" >> logs/machine_monitoring.csv
-}
+  # Wait for all experiments in this batch to complete startup
+  for pid in "${pids[@]}"; do
+    wait $pid
+  done
 
-function log_disk_usage() {
-  local log_entry="$1"
-  local disk=$(df | grep '/$')
-  local used=$(echo $disk | awk '{print $3}')
-  echo "$log_entry;disk;$used" >> logs/machine_monitoring.csv
-}
+  # Optionally perform operations that require all containers to be running simultaneously
+  # (like load testing across multiple instances)
 
-function log_memory_usage() {
-  local log_entry="$1"
-  local mem=$(free | grep Mem)
-  local used_mem=$(echo $mem | awk '{print $3}')
-  local cached=$(cat /proc/meminfo | grep -i Cached | sed -n '1p' | awk '{print $2}')
-  local buffer=$(cat /proc/meminfo | grep -i Buffers | awk '{print $2}')
-  local swap=$(cat /proc/meminfo | grep -i Swap | grep -i Free | awk '{print $2}')
-  echo "$log_entry;mem;$used_mem;$cached;$buffer;$swap" >> logs/machine_monitoring.csv
-}
+  # Now stop and remove containers
+  pids=()  # Clear array for next set of PIDs
+  for (( i=1; i<=concurrency_level; i++ )); do
+    uid=$(date +%Y%m%d%H%M%S%N)  # Generate another unique identifier
+    echo "Stopping and removing experiment $i in run $run"
+    stop_pid=$(stop_command "$uid")
+    remove_pid=$(remove_container_command "$uid")
+    pids+=($stop_pid $remove_pid)
+  done
 
-# Usage in your main loop with iteration passed
-count=0
-while [[ $count -lt $max_runs ]]; do
-  progress $count "$max_runs"
-  download_time=$(get_command_time_and_monitor_resources "download_command" "$count")
-  load_time=$(get_command_time_and_monitor_resources "load_command" "$count")
-  # Continue with other commands as necessary
-  count=$((count + 1))
+  # Wait for all stop and removal commands to complete
+  for pid in "${pids[@]}"; do
+    wait $pid
+  done
+
+  echo "Completed run $run of $max_runs"
 done
+
+echo "All operations completed."
