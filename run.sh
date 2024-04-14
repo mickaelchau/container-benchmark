@@ -4,7 +4,7 @@
 DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 service="$1"
 time_log_path="logs/${service}_time.csv"
-machine_resources_log_path="logs/${service}_machine_resources.csv"
+machine_resources_log_name="${service}_machine_resources.csv"
 source "$DIR/containers_functions/${service}.sh"
 
 # Define a trap function
@@ -96,14 +96,14 @@ function log_cpu_usage() {
   local sys=$(echo $cpu | awk '{print $5}')
   local iowait=$(echo $cpu | awk '{print $6}')
   local soft=$(echo $cpu | awk '{print $8}')
-  echo "$log_entry;cpu;$usr;$nice;$sys;$iowait;$soft" >> "$machine_resources_log_path"
+  echo "$log_entry;$usr;$nice;$sys;$iowait;$soft" >> "logs/cpu_${machine_resources_log_name}"
 }
 
 function log_disk_usage() {
   local log_entry="$1"
   local disk=$(df | grep '/$')
   local used=$(echo $disk | awk '{print $3}')
-  echo "$log_entry;disk;$used" >> "$machine_resources_log_path"
+  echo "$log_entry;$used" >> "logs/disk_${machine_resources_log_name}"
 }
 
 function log_memory_usage() {
@@ -113,7 +113,7 @@ function log_memory_usage() {
   local cached=$(cat /proc/meminfo | grep -i Cached | sed -n '1p' | awk '{print $2}')
   local buffer=$(cat /proc/meminfo | grep -i Buffers | awk '{print $2}')
   local swap=$(cat /proc/meminfo | grep -i Swap | grep -i Free | awk '{print $2}')
-  echo "$log_entry;mem;$used_mem;$cached;$buffer;$swap" >> "$machine_resources_log_path"
+  echo "$log_entry;$used_mem;$cached;$buffer;$swap" >> "logs/memory_${machine_resources_log_name}"
 }
 
 max_runs=2
