@@ -2,7 +2,10 @@
 
 # Change the container functions to the one you want to test
 DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
-source "$DIR/containers_functions/docker.sh"
+service="$1"
+time_log_path="logs/${service}_time.csv"
+machine_resources_log_path="logs/${service}_machine_resources.csv"
+source "$DIR/containers_functions/${service}.sh"
 
 # Define a trap function
 trap cleanup SIGINT
@@ -42,37 +45,20 @@ function progress {
   printf "\r$current / $2 : [${NC}${_fill// /#}${_empty// /-}] ${_progress}%%${NC}"
 }
 
-# Function used to get the time execution of a function
-function get_command_time() {
-  #echo "hi bro\n"
-  local start end total
-  start=$(date +%s%N)
-  #echo "hi bro22\n"
-  #echo $start
-  "$1" >> /dev/null  
-  #echo "hi bro33\n"
-  end=$(date +%s%N)
-
-  total=$((end - start))
-  #echo "hi bro44\n"
-  echo $total
-}
-
-# NEWWWW
 
 # Function to get the time execution of a function and monitor system resources
 function get_command_time_and_monitor_resources() {
-  local start end total command iteration uid
+  local start end total command concurrency count
   command="$1"
-  iteration="$2"
-  uid=$(date +%Y%m%d%H%M%S%N)  # Unique identifier based on timestamp
+  concurrency="$2"
+  count="$3"
 
   # Start resource monitoring in the background with unique identifier
-  start_resource_monitoring "$command" "$iteration" "$uid" &
+  start_resource_monitoring "$command" "$concurrency" "$count" &
 
   local monitoring_pid=$!
   start=$(date +%s%N)
-  "$command" >/dev/null
+  "$command" $concurrency >/dev/null
   end=$(date +%s%N)
   total=$((end - start))
 
@@ -85,15 +71,15 @@ function get_command_time_and_monitor_resources() {
 # Function to start resource monitoring
 function start_resource_monitoring() {
   local command="$1"
-  local iteration="$2"
-  local uid="$3"
+  local concurrency="$2"
+  local count="$3"
   local date_time interval=1  # interval in seconds for monitoring
 
   while true; do
     date_time=$(date +%Y-%m-%d_%H-%M-%S)
 
     # Log CPU, Disk, and Memory usage
-    local log_entry="$uid;$iteration;$command;$date_time"
+    local log_entry="$concurrency;$count;$command;$date_time"
     log_cpu_usage "$log_entry"
     log_disk_usage "$log_entry"
     log_memory_usage "$log_entry"
@@ -110,14 +96,14 @@ function log_cpu_usage() {
   local sys=$(echo $cpu | awk '{print $5}')
   local iowait=$(echo $cpu | awk '{print $6}')
   local soft=$(echo $cpu | awk '{print $8}')
-  echo "$log_entry;cpu;$usr;$nice;$sys;$iowait;$soft" >> logs/machine_monitoring.csv
+  echo "$log_entry;cpu;$usr;$nice;$sys;$iowait;$soft" >> "$machine_resources_log_path"
 }
 
 function log_disk_usage() {
   local log_entry="$1"
   local disk=$(df | grep '/$')
   local used=$(echo $disk | awk '{print $3}')
-  echo "$log_entry;disk;$used" >> logs/machine_monitoring.csv
+  echo "$log_entry;disk;$used" >> "$machine_resources_log_path"
 }
 
 function log_memory_usage() {
@@ -127,26 +113,31 @@ function log_memory_usage() {
   local cached=$(cat /proc/meminfo | grep -i Cached | sed -n '1p' | awk '{print $2}')
   local buffer=$(cat /proc/meminfo | grep -i Buffers | awk '{print $2}')
   local swap=$(cat /proc/meminfo | grep -i Swap | grep -i Free | awk '{print $2}')
-  echo "$log_entry;mem;$used_mem;$cached;$buffer;$swap" >> logs/machine_monitoring.csv
+  echo "$log_entry;mem;$used_mem;$cached;$buffer;$swap" >> "$machine_resources_log_path"
 }
 
-count=0
-max_runs=100
+max_runs=2
 export image_name="hpl"
-while [[ $count -lt $max_runs ]]; do
+
+for concurrency in 1 2 4 8; do
+  count=0
+  while [[ $count -lt $max_runs ]]; do
    
-    load_time=$(get_command_time_and_monitor_resources "load_command" "$count")
-    instantiate_time=$(get_command_time_and_monitor_resources "start_command" "$count")
+    load_time=$(get_command_time_and_monitor_resources "load_command" "$count" 0)
+    instantiate_time=$(get_command_time_and_monitor_resources "start_command" "$count" $concurrency)
+    sudo docker container ls
+    #start_command 5 
     #sleep 30
-    stop_time=$(get_command_time_and_monitor_resources "stop_command" "$count")
-    container_removal_time=$(get_command_time_and_monitor_resources "remove_container_command" "$count")
-    image_removal_time=$(get_command_time_and_monitor_resources "remove_image_command" "$count")
+    stop_time=$(get_command_time_and_monitor_resources "stop_command" "$count" $concurrency)
+    container_removal_time=$(get_command_time_and_monitor_resources "remove_container_command" "$count" $concurrency)
+    image_removal_time=$(get_command_time_and_monitor_resources "remove_image_command" "$count" 0)
     #sleep 60
     display_date=$(get_date_time)
 
-    echo "$load_time;$instantiate_time;$stop_time;$container_removal_time;$image_removal_time;$image_size;$display_date" >>"logs/dockertest"
-    echo "$count;$load_time;$instantiate_time;$stop_time;$container_removal_time;$image_removal_time;$image_size;$display_date" 
+    echo "$concurrency;$count;$load_time;$instantiate_time;$stop_time;$container_removal_time;$image_removal_time;$image_size;$display_date" >>"$time_log_path"
+    echo "$concurrency;$count;$load_time;$instantiate_time;$stop_time;$container_removal_time;$image_removal_time;$image_size;$display_date" 
     count=$((count + 1))
+  done
 done
 
 

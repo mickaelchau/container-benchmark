@@ -13,19 +13,44 @@ function load_command() {
 
 function start_command() {
   #echo "yo22 $image_name"
-  docker run -d  --name hpl "$image_name" || exit 1
+  declare -a pids
+  for concurrency in $(seq 1 $1); do
+    docker run -d  --name "hpl-$concurrency" "$image_name" || exit 1 &
+    pids+=($!)
+  done
+  #ps
+  # Wait for all experiments in this batch to complete startup
+  for pid in "${pids[@]}"; do
+    wait $pid
+  done
 }
 
 function stop_command() {
-  docker container stop hpl || exit 1
+  declare -a pids
+  for concurrency in $(seq 1 $1); do
+    docker container stop "hpl-$concurrency" || exit 1 &
+    pids+=($!)
+  done
+  # Wait for all experiments in this batch to complete startup
+  for pid in "${pids[@]}"; do
+    wait $pid
+  done
 }
 
 function remove_image_command() {
-  docker rmi "$image_name" || exit 1
+  docker rmi "$image_name" || exit 1 
 }
 
 function remove_container_command() {
-  docker rm hpl || exit 1
+  declare -a pids
+  for concurrency in $(seq 1 $1); do
+    docker rm "hpl-$concurrency" || exit 1 &
+    pids+=($!)
+  done
+  # Wait for all experiments in this batch to complete startup
+  for pid in "${pids[@]}"; do
+    wait $pid
+  done
 }
 
 function get_up_time() {
