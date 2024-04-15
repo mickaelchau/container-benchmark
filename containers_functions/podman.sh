@@ -8,16 +8,34 @@ function download_command() {
 }
 
 function load_command() {
-  podman load -q -i image.tar
-  rm -f image.tar
+  podman load -i hpl.tar
+  #rm -f image.tar
 }
 
 function start_command() {
-  podman run --name "$image_name" -td -p "$mapping_port:$mapping_port" --init "$image_name" || exit 1
+  #podman run --name "$image_name" -td -p "$mapping_port:$mapping_port" --init "$image_name" || exit 1
+  declare -a pids
+  for concurrency in $(seq 1 $1); do
+    podman run -d  --name "hpl-$concurrency" "$image_name" || exit 1 &
+    pids+=($!)
+  done
+  #ps
+  # Wait for all experiments in this batch to complete startup
+  for pid in "${pids[@]}"; do
+    wait $pid
+  done
 }
 
 function stop_command() {
-  podman container stop "$image_name" || exit 1
+  declare -a pids
+  for concurrency in $(seq 1 $1); do
+    podman container stop "hpl-$concurrency" || exit 1 &
+    pids+=($!)
+  done
+  # Wait for all experiments in this batch to complete startup
+  for pid in "${pids[@]}"; do
+    wait $pid
+  done
 }
 
 function remove_image_command() {
@@ -25,7 +43,15 @@ function remove_image_command() {
 }
 
 function remove_container_command() {
-  podman rm "$image_name" || exit 1
+  declare -a pids
+  for concurrency in $(seq 1 $1); do
+    podman rm "hpl-$concurrency" || exit 1 &
+    pids+=($!)
+  done
+  # Wait for all experiments in this batch to complete startup
+  for pid in "${pids[@]}"; do
+    wait $pid
+  done
 }
 
 function get_up_time() {
