@@ -116,7 +116,7 @@ function log_memory_usage() {
   echo "$log_entry;$used_mem;$cached;$buffer;$swap" >> "logs/memory_${machine_resources_log_name}"
 }
 
-max_runs=2
+max_runs=100
 export image_name="hpl"
 
 for concurrency in 1 2 4 8; do
@@ -127,11 +127,11 @@ for concurrency in 1 2 4 8; do
     instantiate_time=$(get_command_time_and_monitor_resources "start_command" "$concurrency" "$count")
     sudo docker container ls
     #start_command 5 
-    #sleep 30
+    sleep 30
     stop_time=$(get_command_time_and_monitor_resources "stop_command" "$concurrency" "$count")
     container_removal_time=$(get_command_time_and_monitor_resources "remove_container_command" "$concurrency" "$count")
     image_removal_time=$(get_command_time_and_monitor_resources "remove_image_command" "$concurrency" "$count")
-    #sleep 60
+    sleep 60
     display_date=$(get_date_time)
 
     echo "$concurrency;$count;$load_time;$instantiate_time;$stop_time;$container_removal_time;$image_removal_time;$image_size;$display_date" >>"$time_log_path"
