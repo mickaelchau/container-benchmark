@@ -8,7 +8,7 @@ function download_command() {
 }
 
 function load_command() {
-  podman load -i hpl.tar
+  podman load -q -i hpl.tar
   #rm -f image.tar
 }
 
