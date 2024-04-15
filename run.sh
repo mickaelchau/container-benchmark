@@ -127,12 +127,12 @@ for concurrency in 1 2 4 8; do
     instantiate_time=$(get_command_time_and_monitor_resources "start_command" "$concurrency" "$count")
     sudo podman container ls
     #start_command 5 
-    #sleep 30
+    sleep 30
     stop_time=$(get_command_time_and_monitor_resources "stop_command" "$concurrency" "$count")
     container_removal_time=$(get_command_time_and_monitor_resources "remove_container_command" "$concurrency" "$count")
     image_removal_time=$(get_command_time_and_monitor_resources "remove_image_command" "$concurrency" "$count")
-    sudo podman image ls
-    #sleep 60
+    #sudo podman image ls
+    sleep 60
     display_date=$(get_date_time)
 
     echo "$concurrency;$count;$load_time;$instantiate_time;$stop_time;$container_removal_time;$image_removal_time;$image_size;$display_date" >>"$time_log_path"
