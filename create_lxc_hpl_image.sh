@@ -3,6 +3,7 @@
 hpl_script="install-hpl.sh"
 new_image_tmp_repo="/tmp/sid-lxd"
 hpl_image_name="hpl-lxc-image"
+hpl_startup_service="hpl-startup.service"
 
 # Install required packages.
 sudo apt install debootstrap
@@ -11,14 +12,19 @@ sudo apt install debootstrap
 mkdir "$new_image_tmp_repo"
 sudo debootstrap sid "$new_image_tmp_repo"
 
-# Copy HPL installation script to base image.
+# Copy HPL installation script to base image as well as
+# config to automate hpl run at container start.
 sudo cp "$hpl_script" "$new_image_tmp_repo"/root/install-hpl.sh
+sudo cp "$hpl_startup_service" "/etc/systemd/system/hpl-startup.service"
 
-# Run installation script.
+# Run installation script and set up running hpl on container startup.
 sudo chroot "$new_image_tmp_repo" /bin/bash -c '
     cd /root
     chmod 777 install-hpl.sh
     sh install-hpl.sh
+    systemctl daemon-reload
+    systemctl enable /etc/systemd/system/hpl-startup.service
+    systemctl start /etc/systemd/system/hpl-startup.service
     exit
 '
 
