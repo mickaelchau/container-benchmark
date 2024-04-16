@@ -15,7 +15,7 @@ sudo debootstrap sid "$new_image_tmp_repo"
 # Copy HPL installation script to base image as well as
 # config to automate hpl run at container start.
 sudo cp "$hpl_script" "$new_image_tmp_repo"/root/install-hpl.sh
-sudo cp "$hpl_startup_service" "/etc/systemd/system/hpl-startup.service"
+sudo cp "$hpl_startup_service" "$new_image_tmp_repo"/etc/systemd/system/hpl-startup.service
 
 # Run installation script and set up running hpl on container startup.
 sudo chroot "$new_image_tmp_repo" /bin/bash -c '
