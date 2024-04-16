@@ -12,11 +12,11 @@ function load_command() {
 }
 
 function start_command() {
-  lxc launch "$image_name" "$image_name" || exit 1
+  lxc launch "$image_name" "hpl-$concurrency" || exit 1
 }
 
 function stop_command() {
-  lxc stop "$image_name" || exit 1
+  lxc stop "hpl-$concurrency" || exit 1
 }
 
 function remove_image_command() {
@@ -24,7 +24,7 @@ function remove_image_command() {
 }
 
 function remove_container_command() {
-  lxc delete --force "$image_name" || exit 1
+  lxc delete --force "hpl-$concurrency" || exit 1
 
 }
 
