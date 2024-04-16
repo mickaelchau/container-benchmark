@@ -8,16 +8,32 @@ function download_command() {
 }
 
 function load_command() {
-  lxc image import metadata.tar.gz hpl_lxc.tar.gz --alias "$image_name"
+  lxc image import hpl_lxc.tar.gz --alias "$image_name"
 }
 
 function start_command() {
-  lxc launch "$image_name" "hpl-$concurrency" || exit 1
-  lxc exec "hpl-$concurrency" "cd ~/hpl-2.3/bin/rpi/; mpirun -np 1 xphl"
+  declare -a pids
+  for concurrency in $(seq 1 $1); do
+    lxc launch "$image_name" "hpl-$concurrency" || exit 1 &
+    pids+=($!)
+  done
+  #ps
+  # Wait for all experiments in this batch to complete startup
+  for pid in "${pids[@]}"; do
+    wait $pid
+  done
 }
 
 function stop_command() {
-  lxc stop "hpl-$concurrency" || exit 1
+  declare -a pids
+  for concurrency in $(seq 1 $1); do
+    lxc stop "hpl-$concurrency" || exit 1 &
+    pids+=($!)
+  done
+  # Wait for all experiments in this batch to complete startup
+  for pid in "${pids[@]}"; do
+    wait $pid
+  done
 }
 
 function remove_image_command() {
@@ -25,8 +41,15 @@ function remove_image_command() {
 }
 
 function remove_container_command() {
-  lxc delete --force "hpl-$concurrency" || exit 1
-
+  declare -a pids
+  for concurrency in $(seq 1 $1); do
+    lxc delete --force "hpl-$concurrency" || exit 1 &
+    pids+=($!)
+  done
+  # Wait for all experiments in this batch to complete startup
+  for pid in "${pids[@]}"; do
+    wait $pid
+  done
 }
 
 function get_up_time() {
