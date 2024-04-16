@@ -1,6 +1,7 @@
 [Unit]
 Description=Executing HPL on startup
 After=network.target
-[Service]ExecStart=/usr/bin/mpirun --allow-run-as-root -np 1 /root/hpl-2.3/bin/rpi/xhpl
+[Service]
+ExecStart=/bin/bash -c 'cd /root/hpl-2.3/bin/rpi; /usr/bin/mpirun --allow-run-as-root -np 1 xhpl'
 [Install]
 WantedBy=default.target
