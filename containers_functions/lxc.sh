@@ -9,12 +9,10 @@ function download_command() {
 
 function load_command() {
   lxc image import image.tar.gz --alias "$image_name"
-  rm -f image.tar.gz
 }
 
 function start_command() {
   lxc launch "$image_name" "$image_name" || exit 1
-  lxc config device add "$image_name" myport$mapping_port proxy listen=tcp:0.0.0.0:$mapping_port connect=tcp:127.0.0.1:$mapping_port || exit 1
 }
 
 function stop_command() {
