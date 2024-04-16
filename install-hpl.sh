@@ -2,8 +2,8 @@
 cd
 
 # Install compilers, libraries, and dependencies
-sudo apt-get update
-sudo apt-get install -y wget gcc openmpi-bin openmpi-common libopenmpi-dev libatlas-base-dev gfortran make
+apt-get update
+apt-get install -y wget gcc openmpi-bin openmpi-common libopenmpi-dev libatlas-base-dev gfortran make
 
 # Download and pre-install HPL
 wget http://www.netlib.org/benchmark/hpl/hpl-2.3.tar.gz

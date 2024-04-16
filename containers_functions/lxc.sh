@@ -8,11 +8,12 @@ function download_command() {
 }
 
 function load_command() {
-  lxc image import image.tar.gz --alias "$image_name"
+  lxc image import metadata.tar.gz hpl_lxc.tar.gz --alias "$image_name"
 }
 
 function start_command() {
   lxc launch "$image_name" "hpl-$concurrency" || exit 1
+  lxc exec "hpl-$concurrency" "cd ~/hpl-2.3/bin/rpi/; mpirun -np 1 xphl"
 }
 
 function stop_command() {
