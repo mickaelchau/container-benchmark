@@ -1,3 +1,4 @@
+concurrency;count;command;date_time;usr;nice;sys;iowait;soft
 1;1;load_command;2024-04-15_14-40-16;6.40;0.00;9.66;0.00;0.00
 1;1;load_command;2024-04-15_14-40-18;21.11;0.00;6.83;0.25;0.00
 1;1;load_command;2024-04-15_14-40-20;12.14;0.00;1.13;0.00;0.00
